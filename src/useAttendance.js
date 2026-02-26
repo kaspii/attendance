@@ -50,20 +50,24 @@ export default function useAttendance(uid) {
 
     async function fetchWeeks() {
       setLoading(true)
-      const weeksRef = collection(db, 'users', uid, 'weeks')
-      const snapshot = await getDocs(weeksRef)
+      try {
+        const weeksRef = collection(db, 'users', uid, 'weeks')
+        const snapshot = await getDocs(weeksRef)
 
-      const saved = {}
-      snapshot.forEach((doc) => {
-        saved[doc.id] = doc.data().days
-      })
+        const saved = {}
+        snapshot.forEach((doc) => {
+          saved[doc.id] = doc.data().days
+        })
 
-      setWeeks((prev) =>
-        prev.map((w) => ({
-          ...w,
-          days: saved[w.id] ? { ...emptyDays(), ...saved[w.id] } : w.days,
-        }))
-      )
+        setWeeks((prev) =>
+          prev.map((w) => ({
+            ...w,
+            days: saved[w.id] ? { ...emptyDays(), ...saved[w.id] } : w.days,
+          }))
+        )
+      } catch (err) {
+        console.error('Failed to fetch attendance data:', err)
+      }
       setLoading(false)
     }
 
