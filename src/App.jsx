@@ -16,6 +16,7 @@ export default function App() {
       if (u && !ALLOWED_EMAILS.includes(u.email)) {
         setDenied(true)
         await signOut(auth)
+        setAuthLoading(false)
         return
       }
       setDenied(false)
@@ -45,13 +46,13 @@ export default function App() {
 const styles = {
   loading: {
     minHeight: '100vh',
-    background: '#0d0d0f',
+    background: '#f8fafc',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#888',
+    color: '#94a3b8',
     fontFamily: "'DM Mono', 'Courier New', monospace",
     fontSize: 14,
   },

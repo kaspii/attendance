@@ -10,7 +10,7 @@ export default function SignIn({ denied }) {
     <div style={styles.root}>
       <div style={styles.card}>
         <div style={styles.logo}>◈</div>
-        <h1 style={styles.title}>ATTENDANCE TRACKER</h1>
+        <h1 style={styles.title}>Attendance Tracker</h1>
         <p style={styles.subtitle}>12-week rolling window · BELT ≥ 3.0</p>
         {denied && (
           <p style={styles.denied}>Access denied — this account is not authorized.</p>
@@ -26,59 +26,61 @@ export default function SignIn({ denied }) {
 const styles = {
   root: {
     minHeight: '100vh',
-    background: '#0d0d0f',
+    background: '#f8fafc',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontFamily: "'DM Mono', 'Courier New', monospace",
   },
   card: {
-    background: '#141416',
-    border: '1px solid #2a2a2e',
-    borderRadius: 12,
+    background: '#ffffff',
+    border: '1px solid #e2e8f0',
+    borderRadius: 16,
     padding: '48px 40px',
     textAlign: 'center',
     maxWidth: 360,
     width: '100%',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
   },
   logo: {
     fontSize: 48,
-    color: '#c8b97a',
+    color: '#d97706',
     marginBottom: 16,
   },
   title: {
     margin: 0,
     fontSize: 20,
     fontWeight: 700,
-    letterSpacing: '0.12em',
-    color: '#e8e4dc',
+    letterSpacing: '0.04em',
+    color: '#0f172a',
   },
   subtitle: {
     margin: '8px 0 32px',
     fontSize: 11,
     letterSpacing: '0.08em',
-    color: '#888',
+    color: '#94a3b8',
     textTransform: 'uppercase',
   },
   denied: {
-    color: '#f0a0a0',
+    color: '#991b1b',
     fontSize: 12,
     margin: '0 0 20px',
     padding: '10px 16px',
-    background: '#2e1a1a',
-    border: '1px solid #7a3030',
-    borderRadius: 6,
+    background: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: 8,
   },
   button: {
-    background: '#1a2a3a',
-    border: '1px solid #2a4a6a',
-    borderRadius: 8,
-    color: '#6ab0e0',
+    background: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    borderRadius: 10,
+    color: '#374151',
     fontSize: 14,
     padding: '12px 24px',
     cursor: 'pointer',
-    letterSpacing: '0.04em',
+    letterSpacing: '0.02em',
     fontFamily: "'DM Mono', 'Courier New', monospace",
     width: '100%',
+    transition: 'background 0.15s',
   },
 }
