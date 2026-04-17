@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx vite build:*)",
       "Bash(npm install:*)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

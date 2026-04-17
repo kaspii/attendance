@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import useAttendance from "./useAttendance";
+import usePlanner from "./usePlanner";
 import { computeBELT, computeMinDaysNeeded } from "./beltUtils";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
@@ -44,8 +45,14 @@ export default function AttendanceTracker({ uid, onSignOut }) {
   const [mode, setMode] = useState("tracker");
   const [simDays, setSimDays] = useState(3);
   const [simWeeks, setSimWeeks] = useState(4);
-  const [plannerOffset, setPlannerOffset] = useState(4);
-  const [plannerDays, setPlannerDays] = useState({});
+  const {
+    plannerOffset,
+    plannerDays,
+    setPlannerOffset,
+    togglePlannerDay,
+    clearPlanner,
+    loading: plannerLoading,
+  } = usePlanner(uid);
 
   // === TRACKER calculations ===
   const belt = useMemo(() => computeBELT(weeks), [weeks]);
@@ -111,18 +118,7 @@ export default function AttendanceTracker({ uid, onSignOut }) {
 
   const plannerBELT = useMemo(() => computeBELT(plannerWindow), [plannerWindow]);
 
-  const togglePlannerDay = (wid, day) => {
-    setPlannerDays((prev) => {
-      const weekDays = { ...(prev[wid] || emptyDays()) };
-      weekDays[day] = !weekDays[day];
-      return { ...prev, [wid]: weekDays };
-    });
-  };
-
-  const plannerWindowStart = plannerWindow[0]?.monday;
-  const plannerWindowEnd = plannerWindow[11]?.monday;
-
-  if (loading) {
+  if (loading || plannerLoading) {
     return (
       <div style={styles.loadingRoot}>
         <div style={styles.loadingText}>Loading attendance data…</div>
@@ -339,31 +335,34 @@ export default function AttendanceTracker({ uid, onSignOut }) {
             projected BELT.
           </p>
 
-          {/* Window navigator */}
+          {/* Window selector */}
           <div style={styles.plannerControls}>
-            <button
-              onClick={() => setPlannerOffset(Math.max(0, plannerOffset - 1))}
-              style={styles.plannerNavBtn(plannerOffset === 0)}
-              disabled={plannerOffset === 0}
+            <label style={styles.plannerDropdownLabel}>
+              Plan through week of:
+            </label>
+            <select
+              value={plannerOffset}
+              onChange={(e) => setPlannerOffset(+e.target.value)}
+              style={styles.plannerSelect}
             >
-              ←
-            </button>
-            <div style={styles.plannerWindowLabel}>
-              {plannerWindowStart && plannerWindowEnd
-                ? formatDateRange(plannerWindowStart, plannerWindowEnd)
-                : ""}
-              <span style={styles.plannerWindowSub}>
-                {plannerOffset === 0
-                  ? "current trailing window"
-                  : `includes ${plannerOffset} future week${plannerOffset !== 1 ? "s" : ""}`}
-              </span>
-            </div>
-            <button
-              onClick={() => setPlannerOffset(Math.min(11, plannerOffset + 1))}
-              style={styles.plannerNavBtn(plannerOffset === 11)}
-              disabled={plannerOffset === 11}
-            >
-              →
+              {Array.from({ length: 12 }, (_, offset) => {
+                const endMonday = addWeeks(CURRENT_MONDAY, offset);
+                const dateLabel = formatWeekLabel(endMonday);
+                const futureLabel =
+                  offset === 0
+                    ? "no future weeks"
+                    : offset === 1
+                    ? "+1 future week"
+                    : `+${offset} future weeks`;
+                return (
+                  <option key={offset} value={offset}>
+                    {dateLabel} ({futureLabel})
+                  </option>
+                );
+              })}
+            </select>
+            <button onClick={clearPlanner} style={styles.clearBtn}>
+              Clear plan
             </button>
           </div>
 
@@ -799,40 +798,36 @@ const styles = {
   plannerControls: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
+    gap: 12,
     marginBottom: 20,
-    padding: "12px 16px",
-    background: "#f8fafc",
+  },
+  plannerDropdownLabel: {
+    fontSize: 13,
+    color: "#374151",
+    whiteSpace: "nowrap",
+  },
+  plannerSelect: {
+    flex: 1,
+    padding: "7px 10px",
     borderRadius: 8,
     border: "1px solid #e2e8f0",
-  },
-  plannerNavBtn: (disabled) => ({
     background: "#ffffff",
-    border: "1px solid #e2e8f0",
-    borderRadius: 6,
-    color: disabled ? "#cbd5e1" : "#374151",
-    fontSize: 16,
-    padding: "4px 14px",
-    cursor: disabled ? "default" : "pointer",
-    fontFamily: "'DM Mono', 'Courier New', monospace",
-    boxShadow: disabled ? "none" : "0 1px 2px rgba(0,0,0,0.04)",
-    opacity: disabled ? 0.4 : 1,
-  }),
-  plannerWindowLabel: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 14,
-    fontWeight: 600,
     color: "#0f172a",
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
+    fontSize: 13,
+    fontFamily: "'DM Mono', 'Courier New', monospace",
+    cursor: "pointer",
+    outline: "none",
   },
-  plannerWindowSub: {
-    fontSize: 11,
-    color: "#94a3b8",
-    fontWeight: 400,
-    letterSpacing: "0.04em",
+  clearBtn: {
+    background: "transparent",
+    border: "1px solid #fecaca",
+    borderRadius: 6,
+    color: "#dc2626",
+    fontSize: 12,
+    padding: "6px 14px",
+    cursor: "pointer",
+    fontFamily: "'DM Mono', 'Courier New', monospace",
+    whiteSpace: "nowrap",
   },
   footer: {
     textAlign: "center",
