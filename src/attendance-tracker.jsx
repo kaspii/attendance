@@ -4,6 +4,9 @@ import usePlanner from "./usePlanner";
 import { computeBELT, computeMinDaysNeeded } from "./beltUtils";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+const F = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+const LIME = "#D4F535";
+const BLACK = "#111111";
 
 function getMonday(date) {
   const d = new Date(date);
@@ -30,11 +33,6 @@ function emptyDays() {
 
 function formatWeekLabel(monday) {
   return monday.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function formatDateRange(start, end) {
-  const opts = { month: "short", day: "numeric" };
-  return `${start.toLocaleDateString("en-US", opts)} – ${end.toLocaleDateString("en-US", opts)}`;
 }
 
 const TODAY = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
@@ -74,14 +72,10 @@ export default function AttendanceTracker({ uid, onSignOut }) {
   }, [weeks, simDays, simWeeks]);
 
   const expiringAlert = weeks.slice(0, 4).filter((w, i) => weekCounts[i] >= 3);
-
   const minDaysNeeded = useMemo(() => computeMinDaysNeeded(weeks), [weeks]);
-
   const beltStatus = belt === null ? null : belt >= 3 ? "good" : "at-risk";
 
   // === PLANNER calculations ===
-  // plannerOffset = how many weeks the window extends into the future
-  // window spans: currentMonday-(11-plannerOffset) through currentMonday+plannerOffset
   const plannerWindow = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const monday = addWeeks(CURRENT_MONDAY, i - (11 - plannerOffset));
@@ -98,7 +92,6 @@ export default function AttendanceTracker({ uid, onSignOut }) {
       if (isPast) {
         displayDays = actualDays;
       } else if (isCurrent) {
-        // Merge: actual for past/today days, planned for future days of this week
         displayDays = { ...actualDays };
         DAYS.forEach((day, idx) => {
           const dayDate = new Date(monday);
@@ -121,49 +114,48 @@ export default function AttendanceTracker({ uid, onSignOut }) {
   if (loading || plannerLoading) {
     return (
       <div style={styles.loadingRoot}>
-        <div style={styles.loadingText}>Loading attendance data…</div>
+        <div style={styles.loadingText}>Loading…</div>
       </div>
     );
   }
 
   return (
     <div style={styles.root}>
+      {/* Header */}
       <div style={styles.header}>
         <div style={styles.headerLeft}>
-          <div style={styles.logo}>◈</div>
+          <span style={styles.logo}>◈</span>
           <div>
             <h1 style={styles.title}>Attendance Tracker</h1>
             <p style={styles.subtitle}>12-week rolling window · BELT ≥ 3.0</p>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={styles.headerRight}>
           <div style={styles.beltBadge(beltStatus)}>
-            <div style={styles.beltLabel}>BELT AVG</div>
+            <div style={styles.beltLabel(beltStatus)}>BELT AVG</div>
             <div style={styles.beltValue}>{belt !== null ? belt.toFixed(2) : "—"}</div>
             <div style={styles.beltStatusText(beltStatus)}>
-              {beltStatus === "good"
-                ? "✓ compliant"
-                : beltStatus === "at-risk"
-                ? "⚠ at risk"
-                : "needs data"}
+              {beltStatus === "good" ? "✓ compliant" : beltStatus === "at-risk" ? "⚠ at risk" : "—"}
             </div>
           </div>
-          <button onClick={onSignOut} style={styles.signOutBtn}>
+          <button onClick={onSignOut} className="sign-out-btn" style={styles.signOutBtn}>
             Sign out
           </button>
         </div>
       </div>
 
-      {/* Mode tabs */}
+      {/* Mode pill toggle */}
       <div style={styles.modeTabs}>
         <button
           onClick={() => setMode("tracker")}
+          className={`mode-tab${mode === "tracker" ? " mode-tab-active" : ""}`}
           style={styles.modeTab(mode === "tracker")}
         >
           Tracker
         </button>
         <button
           onClick={() => setMode("planner")}
+          className={`mode-tab${mode === "planner" ? " mode-tab-active" : ""}`}
           style={styles.modeTab(mode === "planner")}
         >
           Planner
@@ -172,63 +164,56 @@ export default function AttendanceTracker({ uid, onSignOut }) {
 
       {mode === "tracker" && (
         <>
+          {/* Alert bars */}
           {beltStatus === "at-risk" && (
             <div style={styles.alertBar("red")}>
-              ⚠ Your BELT average is below 3.0. You need at least{" "}
-              <strong>
-                {minDaysNeeded} day{minDaysNeeded !== 1 ? "s" : ""}
-              </strong>{" "}
-              this week to improve your standing.
+              <strong>⚠ Below threshold.</strong> You need at least{" "}
+              <strong>{minDaysNeeded} day{minDaysNeeded !== 1 ? "s" : ""}</strong> this week to improve your BELT.
             </div>
           )}
           {beltStatus === "good" && expiringAlert.length > 0 && (
             <div style={styles.alertBar("amber")}>
-              ⏳ {expiringAlert.length} high-attendance week
-              {expiringAlert.length > 1 ? "s" : ""} will roll out of your
-              window soon — your cushion may shrink.
+              <strong>Heads up.</strong> {expiringAlert.length} high-attendance week{expiringAlert.length > 1 ? "s" : ""} roll out of your window soon.
             </div>
           )}
 
-          {/* Week grid */}
+          {/* Weekly Log */}
           <div style={styles.card}>
             <h2 style={styles.cardTitle}>Weekly Log</h2>
             <div style={styles.weekGrid}>
               <div style={styles.weekRowHeader}>
                 <div style={styles.weekLabelHeader}>Week of</div>
                 {DAYS.map((d) => (
-                  <div key={d} style={styles.dayHeader}>
-                    {d}
-                  </div>
+                  <div key={d} style={styles.dayHeader}>{d}</div>
                 ))}
                 <div style={styles.countHeader}>Days</div>
               </div>
               {weeks.map((w, i) => {
                 const count = weekCounts[i];
-                const isCurrentWeek =
-                  w.monday.toDateString() === CURRENT_MONDAY.toDateString();
+                const isCurrentWeek = w.monday.getTime() === CURRENT_MONDAY.getTime();
                 const isExpiring = i < 4;
                 return (
                   <div key={w.id} style={styles.weekRow(isCurrentWeek, isExpiring)}>
-                    <div style={styles.weekLabel}>
+                    <div style={styles.weekLabel(isExpiring && !isCurrentWeek)}>
                       {formatWeekLabel(w.monday)}
                       {isCurrentWeek && <span style={styles.badge("blue")}>now</span>}
-                      {isExpiring && !isCurrentWeek && (
-                        <span style={styles.badge("gray")}>exp</span>
-                      )}
+                      {isExpiring && !isCurrentWeek && <span style={styles.badge("gray")}>exp</span>}
                     </div>
                     {DAYS.map((day) => {
                       const dayDate = new Date(w.monday);
                       dayDate.setDate(dayDate.getDate() + DAYS.indexOf(day));
                       dayDate.setHours(0, 0, 0, 0);
                       const isFuture = dayDate > TODAY;
+                      const checked = w.days[day];
                       return (
                         <button
                           key={day}
                           onClick={() => !isFuture && toggleDay(w.id, day)}
-                          style={styles.dayBtn(w.days[day], isFuture)}
+                          className={`day-btn${checked ? " day-btn-checked" : ""}`}
+                          style={styles.dayBtn(checked, isFuture)}
                           title={isFuture ? "Future date" : day}
                         >
-                          {w.days[day] ? "●" : isFuture ? "·" : "○"}
+                          {checked ? "●" : isFuture ? "·" : "○"}
                         </button>
                       );
                     })}
@@ -243,22 +228,19 @@ export default function AttendanceTracker({ uid, onSignOut }) {
           <div style={styles.statsRow}>
             <div style={styles.statCard}>
               <div style={styles.statLabel}>Min days needed this week</div>
-              <div style={styles.statValue}>{minDaysNeeded}</div>
+              <div style={styles.statValue(false)}>{minDaysNeeded}</div>
               <div style={styles.statSub}>to maintain BELT ≥ 3.0</div>
             </div>
             <div style={styles.statCard}>
               <div style={styles.statLabel}>Current week</div>
-              <div style={styles.statValue}>{weekCounts[11]}</div>
+              <div style={styles.statValue(false)}>{weekCounts[11]}</div>
               <div style={styles.statSub}>days logged so far</div>
             </div>
             <div style={styles.statCard}>
               <div style={styles.statLabel}>Best 8 avg</div>
-              <div style={styles.statValue}>
+              <div style={styles.statValue(false)}>
                 {(
-                  [...weekCounts]
-                    .sort((a, b) => b - a)
-                    .slice(0, 8)
-                    .reduce((a, b) => a + b, 0) / 8 || 0
+                  [...weekCounts].sort((a, b) => b - a).slice(0, 8).reduce((a, b) => a + b, 0) / 8 || 0
                 ).toFixed(2)}
               </div>
               <div style={styles.statSub}>across 12 weeks</div>
@@ -269,56 +251,31 @@ export default function AttendanceTracker({ uid, onSignOut }) {
           <div style={styles.card}>
             <h2 style={styles.cardTitle}>Forward Simulator</h2>
             <p style={styles.cardDesc}>
-              What if you come in a consistent number of days per week for the
-              next few weeks? See how it affects your BELT.
+              Simulate coming in a consistent number of days per week and see how it affects your BELT.
             </p>
             <div style={styles.simControls}>
               <div style={styles.simSlider}>
-                <label style={styles.simLabel}>
-                  Days/week: <strong>{simDays}</strong>
-                </label>
-                <input
-                  type="range"
-                  min={0}
-                  max={5}
-                  value={simDays}
-                  onChange={(e) => setSimDays(+e.target.value)}
-                  style={styles.slider}
-                />
+                <label style={styles.simLabel}>Days/week: <strong>{simDays}</strong></label>
+                <input type="range" min={0} max={5} value={simDays}
+                  onChange={(e) => setSimDays(+e.target.value)} style={styles.slider} />
                 <div style={styles.sliderTicks}>
-                  {[0, 1, 2, 3, 4, 5].map((n) => (
-                    <span key={n}>{n}</span>
-                  ))}
+                  {[0,1,2,3,4,5].map((n) => <span key={n}>{n}</span>)}
                 </div>
               </div>
               <div style={styles.simSlider}>
-                <label style={styles.simLabel}>
-                  Weeks ahead: <strong>{simWeeks}</strong>
-                </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={12}
-                  value={simWeeks}
-                  onChange={(e) => setSimWeeks(+e.target.value)}
-                  style={styles.slider}
-                />
+                <label style={styles.simLabel}>Weeks ahead: <strong>{simWeeks}</strong></label>
+                <input type="range" min={1} max={12} value={simWeeks}
+                  onChange={(e) => setSimWeeks(+e.target.value)} style={styles.slider} />
                 <div style={styles.sliderTicks}>
-                  {[1, 3, 6, 9, 12].map((n) => (
-                    <span key={n}>{n}</span>
-                  ))}
+                  {[1,3,6,9,12].map((n) => <span key={n}>{n}</span>)}
                 </div>
               </div>
             </div>
             <div style={styles.simResult(simBELT !== null && simBELT >= 3)}>
               <span>Projected BELT: </span>
               <strong>{simBELT !== null ? simBELT.toFixed(2) : "—"}</strong>
-              <span style={{ marginLeft: 12, opacity: 0.7 }}>
-                {simBELT === null
-                  ? ""
-                  : simBELT >= 3
-                  ? "✓ Would be compliant"
-                  : "⚠ Would be below threshold"}
+              <span style={{ marginLeft: 10, opacity: 0.75 }}>
+                {simBELT === null ? "" : simBELT >= 3 ? "✓ Would be compliant" : "⚠ Would be below threshold"}
               </span>
             </div>
           </div>
@@ -329,39 +286,35 @@ export default function AttendanceTracker({ uid, onSignOut }) {
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>Attendance Planner</h2>
           <p style={styles.cardDesc}>
-            Select a 12-week window and mark the days you plan to come in.
-            Past weeks are pre-populated from your actual data. Future day
-            slots are clickable — toggle them to build your plan and see the
-            projected BELT.
+            Select how far ahead you want to plan. Past weeks show your actual attendance.
+            Click future day slots to mark days you plan to attend and see the projected BELT.
+            Your plan is saved automatically.
           </p>
 
           {/* Window selector */}
           <div style={styles.plannerControls}>
-            <label style={styles.plannerDropdownLabel}>
-              Plan through week of:
-            </label>
-            <select
-              value={plannerOffset}
-              onChange={(e) => setPlannerOffset(+e.target.value)}
-              style={styles.plannerSelect}
-            >
-              {Array.from({ length: 12 }, (_, offset) => {
-                const endMonday = addWeeks(CURRENT_MONDAY, offset);
-                const dateLabel = formatWeekLabel(endMonday);
-                const futureLabel =
-                  offset === 0
-                    ? "no future weeks"
-                    : offset === 1
-                    ? "+1 future week"
+            <div style={styles.plannerDropdownGroup}>
+              <label style={styles.plannerDropdownLabel}>Window end date</label>
+              <select
+                value={plannerOffset}
+                onChange={(e) => setPlannerOffset(+e.target.value)}
+                style={styles.plannerSelect}
+              >
+                {Array.from({ length: 12 }, (_, offset) => {
+                  const endMonday = addWeeks(CURRENT_MONDAY, offset);
+                  const dateLabel = formatWeekLabel(endMonday);
+                  const futureLabel = offset === 0 ? "no future weeks"
+                    : offset === 1 ? "+1 future week"
                     : `+${offset} future weeks`;
-                return (
-                  <option key={offset} value={offset}>
-                    {dateLabel} ({futureLabel})
-                  </option>
-                );
-              })}
-            </select>
-            <button onClick={clearPlanner} style={styles.clearBtn}>
+                  return (
+                    <option key={offset} value={offset}>
+                      Week of {dateLabel} ({futureLabel})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <button onClick={clearPlanner} className="clear-btn" style={styles.clearBtn}>
               Clear plan
             </button>
           </div>
@@ -370,18 +323,14 @@ export default function AttendanceTracker({ uid, onSignOut }) {
           <div style={styles.weekGrid}>
             <div style={styles.weekRowHeader}>
               <div style={styles.weekLabelHeader}>Week of</div>
-              {DAYS.map((d) => (
-                <div key={d} style={styles.dayHeader}>
-                  {d}
-                </div>
-              ))}
+              {DAYS.map((d) => <div key={d} style={styles.dayHeader}>{d}</div>)}
               <div style={styles.countHeader}>Days</div>
             </div>
             {plannerWindow.map((w) => {
               const count = Object.values(w.days).filter(Boolean).length;
               return (
                 <div key={w.id} style={styles.weekRow(w.isCurrent, false)}>
-                  <div style={styles.weekLabel}>
+                  <div style={styles.weekLabel(false)}>
                     {formatWeekLabel(w.monday)}
                     {w.isCurrent && <span style={styles.badge("blue")}>now</span>}
                     {w.isPast && <span style={styles.badge("gray")}>actual</span>}
@@ -392,14 +341,17 @@ export default function AttendanceTracker({ uid, onSignOut }) {
                     dayDate.setDate(w.monday.getDate() + idx);
                     dayDate.setHours(0, 0, 0, 0);
                     const isFutureDay = dayDate > TODAY;
+                    const checked = w.days[day];
+                    const isPlanned = isFutureDay;
                     return (
                       <button
                         key={day}
                         onClick={() => isFutureDay && togglePlannerDay(w.id, day)}
-                        style={styles.plannerDayBtn(w.days[day], !isFutureDay, isFutureDay)}
+                        className={`planner-day-btn${isPlanned && checked ? " planner-day-planned-checked" : ""}`}
+                        style={styles.plannerDayBtn(checked, !isFutureDay, isFutureDay)}
                         title={!isFutureDay ? `${day} (actual)` : `${day} (planned)`}
                       >
-                        {w.days[day] ? "●" : isFutureDay ? "◻" : "○"}
+                        {checked ? "●" : isFutureDay ? "◻" : "○"}
                       </button>
                     );
                   })}
@@ -409,29 +361,18 @@ export default function AttendanceTracker({ uid, onSignOut }) {
             })}
           </div>
 
-          {/* Planner BELT result */}
-          <div
-            style={{
-              marginTop: 16,
-              ...styles.simResult(plannerBELT !== null && plannerBELT >= 3),
-            }}
-          >
+          {/* Planner result */}
+          <div style={{ marginTop: 16, ...styles.simResult(plannerBELT !== null && plannerBELT >= 3) }}>
             <span>Projected BELT for this window: </span>
             <strong>{plannerBELT !== null ? plannerBELT.toFixed(2) : "—"}</strong>
-            <span style={{ marginLeft: 12, opacity: 0.7 }}>
-              {plannerBELT === null
-                ? ""
-                : plannerBELT >= 3
-                ? "✓ Compliant"
-                : "⚠ Below threshold"}
+            <span style={{ marginLeft: 10, opacity: 0.75 }}>
+              {plannerBELT === null ? "" : plannerBELT >= 3 ? "✓ Compliant" : "⚠ Below threshold"}
             </span>
           </div>
         </div>
       )}
 
-      <p style={styles.footer}>
-        Data synced to the cloud — accessible from any device.
-      </p>
+      <p style={styles.footer}>Data synced to the cloud — accessible from any device.</p>
     </div>
   );
 }
@@ -439,168 +380,160 @@ export default function AttendanceTracker({ uid, onSignOut }) {
 const styles = {
   root: {
     minHeight: "100vh",
-    background: "#f8fafc",
-    color: "#0f172a",
-    fontFamily: "'DM Mono', 'Courier New', monospace",
+    background: "#ffffff",
+    color: "#111111",
+    fontFamily: F,
     padding: "32px 24px",
-    maxWidth: 860,
+    maxWidth: 880,
     margin: "0 auto",
   },
   loadingRoot: {
     minHeight: "100vh",
-    background: "#f8fafc",
+    background: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    fontFamily: F,
   },
   loadingText: {
-    color: "#94a3b8",
-    fontFamily: "'DM Mono', 'Courier New', monospace",
+    color: "#9ca3af",
     fontSize: 14,
   },
   header: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 20,
+    alignItems: "center",
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottom: "1px solid #e5e7eb",
     gap: 16,
   },
   headerLeft: {
     display: "flex",
-    gap: 14,
+    gap: 12,
     alignItems: "center",
   },
   logo: {
-    fontSize: 32,
-    color: "#d97706",
+    fontSize: 28,
+    color: LIME,
     lineHeight: 1,
+    flexShrink: 0,
   },
   title: {
     margin: 0,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 700,
-    letterSpacing: "0.04em",
-    color: "#0f172a",
+    color: "#111111",
+    letterSpacing: "-0.02em",
   },
   subtitle: {
-    margin: "3px 0 0",
-    fontSize: 11,
-    letterSpacing: "0.06em",
-    color: "#94a3b8",
-    textTransform: "uppercase",
+    margin: "2px 0 0",
+    fontSize: 12,
+    color: "#9ca3af",
+  },
+  headerRight: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    flexShrink: 0,
   },
   beltBadge: (status) => ({
     textAlign: "center",
-    background:
-      status === "good"
-        ? "#f0fdf4"
-        : status === "at-risk"
-        ? "#fef2f2"
-        : "#f8fafc",
-    border: `1px solid ${
-      status === "good"
-        ? "#bbf7d0"
-        : status === "at-risk"
-        ? "#fecaca"
-        : "#e2e8f0"
-    }`,
+    background: status === "good" ? LIME : status === "at-risk" ? "#fce7f3" : "#f3f4f6",
     borderRadius: 10,
-    padding: "10px 18px",
-    minWidth: 110,
+    padding: "10px 16px",
+    minWidth: 100,
   }),
-  beltLabel: {
+  beltLabel: (status) => ({
     fontSize: 9,
+    fontWeight: 600,
     letterSpacing: "0.12em",
-    color: "#94a3b8",
+    color: status === "good" ? "#3d6b00" : status === "at-risk" ? "#9d174d" : "#9ca3af",
     textTransform: "uppercase",
-    marginBottom: 4,
-  },
+    marginBottom: 2,
+  }),
   beltValue: {
-    fontSize: 30,
-    fontWeight: 700,
-    color: "#d97706",
+    fontSize: 28,
+    fontWeight: 800,
+    color: "#111111",
     lineHeight: 1,
+    fontVariantNumeric: "tabular-nums",
   },
   beltStatusText: (status) => ({
     fontSize: 11,
-    marginTop: 4,
-    color:
-      status === "good"
-        ? "#16a34a"
-        : status === "at-risk"
-        ? "#dc2626"
-        : "#94a3b8",
+    fontWeight: 500,
+    marginTop: 3,
+    color: status === "good" ? "#3d6b00" : status === "at-risk" ? "#9d174d" : "#9ca3af",
   }),
   modeTabs: {
-    display: "flex",
-    gap: 4,
-    marginBottom: 16,
-    background: "#f1f5f9",
-    borderRadius: 8,
+    display: "inline-flex",
+    background: "#f3f4f6",
+    borderRadius: 100,
     padding: 4,
-    width: "fit-content",
+    gap: 2,
+    marginBottom: 24,
   },
   modeTab: (active) => ({
-    padding: "6px 20px",
-    borderRadius: 6,
+    padding: "8px 22px",
+    borderRadius: 100,
     border: "none",
     background: active ? "#ffffff" : "transparent",
-    color: active ? "#0f172a" : "#64748b",
-    fontSize: 13,
+    color: active ? "#111111" : "#6b7280",
+    fontSize: 14,
     fontWeight: active ? 600 : 400,
     cursor: "pointer",
-    fontFamily: "'DM Mono', 'Courier New', monospace",
-    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-    transition: "all 0.15s",
+    fontFamily: F,
+    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06)" : "none",
+    letterSpacing: "-0.01em",
   }),
   alertBar: (color) => ({
-    background: color === "red" ? "#fef2f2" : "#fffbeb",
-    border: `1px solid ${color === "red" ? "#fecaca" : "#fde68a"}`,
-    borderRadius: 8,
-    padding: "10px 16px",
+    background: color === "red" ? "#fff0f6" : "#fffbeb",
+    borderLeft: `3px solid ${color === "red" ? "#f9a8d4" : "#fcd34d"}`,
+    borderRadius: "0 8px 8px 0",
+    padding: "12px 16px",
     marginBottom: 16,
     fontSize: 13,
-    color: color === "red" ? "#991b1b" : "#92400e",
+    color: color === "red" ? "#9d174d" : "#92400e",
     lineHeight: 1.5,
   }),
   card: {
     background: "#ffffff",
-    border: "1px solid #e2e8f0",
+    border: "1px solid #e5e7eb",
     borderRadius: 12,
-    padding: "20px 24px",
+    padding: "22px 24px",
     marginBottom: 16,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
   },
   cardTitle: {
-    margin: "0 0 10px",
+    margin: "0 0 8px",
     fontSize: 11,
-    letterSpacing: "0.1em",
+    fontWeight: 600,
+    letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: "#94a3b8",
-    fontWeight: 500,
+    color: "#9ca3af",
   },
   cardDesc: {
-    margin: "0 0 16px",
-    fontSize: 13,
-    color: "#64748b",
+    margin: "0 0 18px",
+    fontSize: 14,
+    color: "#6b7280",
     lineHeight: 1.6,
   },
   weekGrid: {
     display: "flex",
     flexDirection: "column",
-    gap: 2,
+    gap: 1,
   },
   weekRowHeader: {
     display: "grid",
-    gridTemplateColumns: "90px repeat(5, 44px) 44px",
+    gridTemplateColumns: "90px repeat(5, 42px) 42px",
     gap: 4,
     paddingBottom: 8,
-    borderBottom: "1px solid #f1f5f9",
+    borderBottom: "1px solid #e5e7eb",
     marginBottom: 4,
   },
   weekLabelHeader: {
     fontSize: 10,
-    color: "#cbd5e1",
+    fontWeight: 600,
+    color: "#d1d5db",
     letterSpacing: "0.08em",
     textTransform: "uppercase",
     display: "flex",
@@ -608,8 +541,9 @@ const styles = {
   },
   dayHeader: {
     fontSize: 10,
-    color: "#cbd5e1",
-    letterSpacing: "0.08em",
+    fontWeight: 600,
+    color: "#d1d5db",
+    letterSpacing: "0.06em",
     textTransform: "uppercase",
     textAlign: "center",
     display: "flex",
@@ -618,8 +552,9 @@ const styles = {
   },
   countHeader: {
     fontSize: 10,
-    color: "#cbd5e1",
-    letterSpacing: "0.08em",
+    fontWeight: 600,
+    color: "#d1d5db",
+    letterSpacing: "0.06em",
     textTransform: "uppercase",
     textAlign: "center",
     display: "flex",
@@ -628,107 +563,75 @@ const styles = {
   },
   weekRow: (isCurrent, isExpiring) => ({
     display: "grid",
-    gridTemplateColumns: "90px repeat(5, 44px) 44px",
+    gridTemplateColumns: "90px repeat(5, 42px) 42px",
     gap: 4,
     alignItems: "center",
-    background: isCurrent ? "#f0f9ff" : "transparent",
+    background: isCurrent ? "#fafee8" : "transparent",
     borderRadius: 6,
-    padding: "2px 0",
-    border: isCurrent ? "1px solid #bae6fd" : "1px solid transparent",
-    opacity: isExpiring && !isCurrent ? 0.5 : 1,
+    padding: "3px 0",
+    border: isCurrent ? "1px solid #e9f59a" : "1px solid transparent",
   }),
-  weekLabel: {
-    fontSize: 12,
-    color: "#374151",
+  weekLabel: (dimmed) => ({
+    fontSize: 13,
+    fontWeight: 500,
+    color: dimmed ? "#9ca3af" : "#374151",
     display: "flex",
     alignItems: "center",
     gap: 6,
     paddingLeft: 4,
-  },
+  }),
   badge: (color) => ({
     fontSize: 9,
+    fontWeight: 600,
     letterSpacing: "0.04em",
     textTransform: "uppercase",
-    padding: "1px 5px",
-    borderRadius: 3,
-    background:
-      color === "blue"
-        ? "#eff6ff"
-        : color === "green"
-        ? "#f0fdf4"
-        : "#f8fafc",
-    color:
-      color === "blue"
-        ? "#3b82f6"
-        : color === "green"
-        ? "#16a34a"
-        : "#94a3b8",
-    border: `1px solid ${
-      color === "blue"
-        ? "#bfdbfe"
-        : color === "green"
-        ? "#bbf7d0"
-        : "#e2e8f0"
-    }`,
+    padding: "2px 6px",
+    borderRadius: 100,
+    background: color === "blue" ? "#eff6ff" : color === "green" ? "#f0fdf4" : "#f3f4f6",
+    color: color === "blue" ? "#3b82f6" : color === "green" ? "#16a34a" : "#9ca3af",
   }),
   dayBtn: (checked, isFuture) => ({
-    width: 36,
+    width: 34,
     height: 28,
     margin: "0 auto",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: checked ? "#f0fdf4" : "transparent",
-    border: `1px ${isFuture && !checked ? "dashed" : "solid"} ${
-      checked ? "#86efac" : "#e2e8f0"
-    }`,
-    borderRadius: 4,
-    color: checked ? "#16a34a" : isFuture ? "#d1d5db" : "#cbd5e1",
+    background: checked ? BLACK : "transparent",
+    border: `1.5px ${isFuture && !checked ? "dashed" : "solid"} ${checked ? BLACK : "#e5e7eb"}`,
+    borderRadius: 5,
     cursor: isFuture ? "default" : "pointer",
+    padding: 0,
     fontSize: 12,
-    transition: "all 0.1s",
+    color: checked ? "#ffffff" : isFuture ? "#d1d5db" : "#9ca3af",
   }),
   plannerDayBtn: (checked, isReadOnly, isFutureDay) => ({
-    width: 36,
+    width: 34,
     height: 28,
     margin: "0 auto",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: checked ? (isFutureDay ? "#eff6ff" : "#f0fdf4") : "transparent",
-    border: `1px ${isReadOnly ? "solid" : "dashed"} ${
+    background: checked
+      ? isFutureDay ? "#2563eb" : BLACK
+      : "transparent",
+    border: `1.5px ${isReadOnly ? "solid" : "dashed"} ${
       checked
-        ? isFutureDay
-          ? "#bfdbfe"
-          : "#86efac"
-        : isFutureDay
-        ? "#cbd5e1"
-        : "#e2e8f0"
+        ? isFutureDay ? "#2563eb" : BLACK
+        : isFutureDay ? "#bfdbfe" : "#e5e7eb"
     }`,
-    borderRadius: 4,
-    color: checked
-      ? isFutureDay
-        ? "#3b82f6"
-        : "#16a34a"
-      : isReadOnly
-      ? "#cbd5e1"
-      : "#94a3b8",
+    borderRadius: 5,
     cursor: isReadOnly ? "default" : "pointer",
+    padding: 0,
     fontSize: 12,
-    transition: "all 0.1s",
+    color: checked ? "#ffffff" : isFutureDay ? "#bfdbfe" : "#9ca3af",
   }),
   countCell: (count) => ({
     textAlign: "center",
     fontSize: 13,
     fontWeight: 700,
-    color:
-      count >= 3
-        ? "#16a34a"
-        : count === 2
-        ? "#d97706"
-        : count === 1
-        ? "#ea580c"
-        : "#cbd5e1",
+    fontVariantNumeric: "tabular-nums",
+    color: count >= 3 ? "#16a34a" : count === 2 ? "#d97706" : count === 1 ? "#ea580c" : "#d1d5db",
   }),
   statsRow: {
     display: "grid",
@@ -738,28 +641,30 @@ const styles = {
   },
   statCard: {
     background: "#ffffff",
-    border: "1px solid #e2e8f0",
+    border: "1px solid #e5e7eb",
     borderRadius: 12,
-    padding: "16px",
+    padding: "18px 16px",
     textAlign: "center",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
   },
   statLabel: {
     fontSize: 10,
+    fontWeight: 600,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: "#94a3b8",
+    color: "#9ca3af",
     marginBottom: 8,
   },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 700,
-    color: "#d97706",
+  statValue: (_unused) => ({
+    fontSize: 30,
+    fontWeight: 800,
+    color: "#111111",
     lineHeight: 1,
-  },
+    fontVariantNumeric: "tabular-nums",
+    letterSpacing: "-0.02em",
+  }),
   statSub: {
     fontSize: 11,
-    color: "#94a3b8",
+    color: "#9ca3af",
     marginTop: 6,
   },
   simControls: {
@@ -775,77 +680,87 @@ const styles = {
     color: "#374151",
     display: "block",
     marginBottom: 8,
+    fontWeight: 400,
   },
   slider: {
     width: "100%",
-    accentColor: "#d97706",
+    accentColor: BLACK,
   },
   sliderTicks: {
     display: "flex",
     justifyContent: "space-between",
     fontSize: 10,
-    color: "#cbd5e1",
+    color: "#d1d5db",
     marginTop: 4,
   },
   simResult: (passing) => ({
-    background: passing ? "#f0fdf4" : "#fef2f2",
-    border: `1px solid ${passing ? "#bbf7d0" : "#fecaca"}`,
+    background: passing ? "#f7ffd4" : "#fff0f6",
+    border: `1px solid ${passing ? "#d9f99d" : "#f9a8d4"}`,
     borderRadius: 8,
     padding: "12px 16px",
     fontSize: 14,
-    color: passing ? "#166534" : "#991b1b",
+    color: passing ? "#3f6212" : "#9d174d",
+    fontWeight: 500,
   }),
   plannerControls: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-end",
     gap: 12,
     marginBottom: 20,
   },
+  plannerDropdownGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 5,
+    flex: 1,
+  },
   plannerDropdownLabel: {
-    fontSize: 13,
-    color: "#374151",
-    whiteSpace: "nowrap",
+    fontSize: 11,
+    fontWeight: 600,
+    color: "#6b7280",
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
   },
   plannerSelect: {
-    flex: 1,
-    padding: "7px 10px",
+    padding: "9px 12px",
     borderRadius: 8,
-    border: "1px solid #e2e8f0",
+    border: "1px solid #e5e7eb",
     background: "#ffffff",
-    color: "#0f172a",
-    fontSize: 13,
-    fontFamily: "'DM Mono', 'Courier New', monospace",
+    color: "#111111",
+    fontSize: 14,
+    fontFamily: F,
     cursor: "pointer",
     outline: "none",
+    width: "100%",
   },
   clearBtn: {
     background: "transparent",
-    border: "1px solid #fecaca",
-    borderRadius: 6,
-    color: "#dc2626",
-    fontSize: 12,
-    padding: "6px 14px",
+    border: "1px solid #f9a8d4",
+    borderRadius: 8,
+    color: "#9d174d",
+    fontSize: 13,
+    fontWeight: 500,
+    padding: "9px 16px",
     cursor: "pointer",
-    fontFamily: "'DM Mono', 'Courier New', monospace",
+    fontFamily: F,
     whiteSpace: "nowrap",
+    flexShrink: 0,
   },
   footer: {
     textAlign: "center",
-    fontSize: 11,
-    color: "#cbd5e1",
+    fontSize: 12,
+    color: "#d1d5db",
     marginTop: 8,
-    letterSpacing: "0.04em",
   },
   signOutBtn: {
-    background: "transparent",
-    border: "1px solid #e2e8f0",
-    borderRadius: 6,
-    color: "#94a3b8",
-    fontSize: 11,
-    padding: "6px 12px",
+    background: "#f3f4f6",
+    border: "none",
+    borderRadius: 8,
+    color: "#6b7280",
+    fontSize: 13,
+    fontWeight: 500,
+    padding: "8px 14px",
     cursor: "pointer",
-    letterSpacing: "0.04em",
-    whiteSpace: "nowrap",
-    fontFamily: "'DM Mono', 'Courier New', monospace",
+    fontFamily: F,
   },
 };

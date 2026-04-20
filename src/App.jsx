@@ -6,6 +6,8 @@ import SignIn from './SignIn'
 
 const ALLOWED_EMAILS = ['katherine.aspinwall@gmail.com']
 
+const F = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+
 export default function App() {
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -30,8 +32,8 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div style={styles.loading}>
-        <span style={styles.loadingText}>Loading…</span>
+      <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F }}>
+        <span style={{ color: '#9ca3af', fontSize: 14 }}>Loading…</span>
       </div>
     )
   }
@@ -41,19 +43,4 @@ export default function App() {
   }
 
   return <AttendanceTracker uid={user.uid} onSignOut={handleSignOut} />
-}
-
-const styles = {
-  loading: {
-    minHeight: '100vh',
-    background: '#f8fafc',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: '#94a3b8',
-    fontFamily: "'DM Mono', 'Courier New', monospace",
-    fontSize: 14,
-  },
 }

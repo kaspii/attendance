@@ -1,0 +1,58 @@
+/* Hover and transition effects — complements inline styles in components */
+
+.day-btn {
+  transition: border-color 0.1s, background 0.1s;
+}
+.day-btn:hover {
+  border-color: #6b7280 !important;
+}
+.day-btn-checked:hover {
+  background: #374151 !important;
+}
+
+.planner-day-btn {
+  transition: border-color 0.1s, background 0.1s;
+}
+.planner-day-btn:hover {
+  border-color: #6b7280 !important;
+}
+.planner-day-planned-checked:hover {
+  background: #1d4ed8 !important;
+}
+
+.mode-tab {
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.mode-tab:not(.mode-tab-active):hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.sign-out-btn {
+  transition: background 0.15s;
+}
+.sign-out-btn:hover {
+  background: #e5e7eb !important;
+}
+
+.btn-primary {
+  transition: background 0.15s;
+}
+.btn-primary:hover {
+  background: #374151 !important;
+}
+
+.clear-btn {
+  transition: background 0.15s, color 0.15s;
+}
+.clear-btn:hover {
+  background: #fff0f6 !important;
+}
+
+select:focus {
+  outline: 2px solid #111111;
+  outline-offset: 1px;
+}
+
+input[type="range"] {
+  cursor: pointer;
+}
