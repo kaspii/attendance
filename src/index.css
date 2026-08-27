@@ -48,6 +48,14 @@
   background: #fff0f6 !important;
 }
 
+.info-btn > span {
+  transition: background 0.15s, border-color 0.15s;
+}
+.info-btn:hover > span {
+  background: #fcd34d;
+  border-color: #92400e;
+}
+
 select:focus {
   outline: 2px solid #111111;
   outline-offset: 1px;

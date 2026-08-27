@@ -38,6 +38,7 @@ export default function AttendanceTracker({ uid, onSignOut }) {
   const [mode, setMode] = useState("tracker");
   const [simDays, setSimDays] = useState(3);
   const [simWeeks, setSimWeeks] = useState(4);
+  const [showExpiringInfo, setShowExpiringInfo] = useState(false);
   const {
     plannerOffset,
     plannerDays,
@@ -169,6 +170,24 @@ export default function AttendanceTracker({ uid, onSignOut }) {
           {beltStatus === "good" && expiringAlert.length > 0 && (
             <div style={styles.alertBar("amber")}>
               <strong>Heads up.</strong> {expiringAlert.length} high-attendance week{expiringAlert.length > 1 ? "s" : ""} roll out of your window soon.
+              <button
+                onClick={() => setShowExpiringInfo((v) => !v)}
+                className="info-btn"
+                style={styles.infoBtn}
+                aria-expanded={showExpiringInfo}
+                aria-label="What does this mean?"
+              >
+                <span style={styles.infoGlyph}>i</span>
+              </button>
+              {showExpiringInfo && (
+                <div style={styles.alertDetail}>
+                  Your BELT averages the <strong>best 8</strong> of the 12 weeks below. The
+                  4 oldest — marked with an amber edge — are still counted, but they leave
+                  the window as new weeks are added, starting with{" "}
+                  <strong>{formatWeekLabel(weeks[0].monday)}</strong> next Monday. Losing a
+                  high-attendance week pulls your average down unless you replace those days.
+                </div>
+              )}
             </div>
           )}
 
@@ -188,11 +207,18 @@ export default function AttendanceTracker({ uid, onSignOut }) {
                 const isCurrentWeek = w.monday.getTime() === CURRENT_MONDAY.getTime();
                 const isExpiring = i < 4;
                 return (
-                  <div key={w.id} style={styles.weekRow(isCurrentWeek, isExpiring)}>
-                    <div style={styles.weekLabel(isExpiring && !isCurrentWeek)}>
+                  <div
+                    key={w.id}
+                    style={styles.weekRow(isCurrentWeek, isExpiring)}
+                    title={
+                      isExpiring
+                        ? `Still counted. Leaves the 12-week window in ${i + 1} week${i === 0 ? "" : "s"}.`
+                        : undefined
+                    }
+                  >
+                    <div style={styles.weekLabel}>
                       {formatWeekLabel(w.monday)}
                       {isCurrentWeek && <span style={styles.badge("blue")}>now</span>}
-                      {isExpiring && !isCurrentWeek && <span style={styles.badge("gray")}>exp</span>}
                     </div>
                     {DAYS.map((day) => {
                       const dayDate = new Date(w.monday);
@@ -491,6 +517,43 @@ const styles = {
     color: color === "red" ? "#9d174d" : "#92400e",
     lineHeight: 1.5,
   }),
+  // 24x24 hit area (WCAG 2.5.8 minimum) wrapping a 16px circle, so the
+  // control stays visually light without becoming hard to tap.
+  infoBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 24,
+    height: 24,
+    margin: "0 0 -7px 3px",
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    padding: 0,
+  },
+  infoGlyph: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 16,
+    height: 16,
+    borderRadius: "50%",
+    border: "1px solid #d9a441",
+    color: "#92400e",
+    fontFamily: F,
+    fontSize: 10,
+    fontWeight: 700,
+    fontStyle: "italic",
+    lineHeight: 1,
+  },
+  alertDetail: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTop: "1px solid #fcd34d",
+    fontSize: 12.5,
+    lineHeight: 1.6,
+    color: "#78350f",
+  },
   card: {
     background: "#ffffff",
     border: "1px solid #e5e7eb",
@@ -564,17 +627,22 @@ const styles = {
     background: isCurrent ? "#fafee8" : "transparent",
     borderRadius: 6,
     padding: "3px 0",
-    border: isCurrent ? "1px solid #e9f59a" : "1px solid transparent",
+    border: `1px solid ${isCurrent ? "#e9f59a" : "transparent"}`,
+    // Constant 3px left edge on every row so the amber marker cannot
+    // shift the day columns out of alignment with the header.
+    borderLeftWidth: 3,
+    borderLeftStyle: "solid",
+    borderLeftColor: isExpiring ? "#fcd34d" : isCurrent ? "#e9f59a" : "transparent",
   }),
-  weekLabel: (dimmed) => ({
+  weekLabel: {
     fontSize: 13,
     fontWeight: 500,
-    color: dimmed ? "#9ca3af" : "#374151",
+    color: "#374151",
     display: "flex",
     alignItems: "center",
     gap: 6,
     paddingLeft: 4,
-  }),
+  },
   badge: (color) => ({
     fontSize: 9,
     fontWeight: 600,
