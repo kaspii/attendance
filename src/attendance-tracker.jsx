@@ -9,36 +9,14 @@ import {
   EXPIRING_WEEKS,
   emptyDays,
 } from "./beltUtils";
+import { getWeekStart, addWeeks, weekId, formatWeekLabel } from "./weeks";
 
 const F = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 const LIME = "#D4F535";
 const BLACK = "#111111";
 
-function getMonday(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function addWeeks(date, n) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n * 7);
-  return d;
-}
-
-function weekId(monday) {
-  return monday.toISOString().slice(0, 10);
-}
-
-function formatWeekLabel(monday) {
-  return monday.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 const TODAY = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
-const CURRENT_MONDAY = getMonday(TODAY);
+const CURRENT_WEEK_START = getWeekStart(TODAY);
 
 export default function AttendanceTracker({ uid, onSignOut }) {
   const { weeks, toggleDay, loading } = useAttendance(uid);
@@ -81,12 +59,12 @@ export default function AttendanceTracker({ uid, onSignOut }) {
   // === PLANNER calculations ===
   const plannerWindow = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
-      const monday = addWeeks(CURRENT_MONDAY, i - (11 - plannerOffset));
-      const wid = weekId(monday);
-      const mondayTime = monday.getTime();
-      const isPast = mondayTime < CURRENT_MONDAY.getTime();
-      const isCurrent = mondayTime === CURRENT_MONDAY.getTime();
-      const isFuture = mondayTime > CURRENT_MONDAY.getTime();
+      const weekStart = addWeeks(CURRENT_WEEK_START, i - (11 - plannerOffset));
+      const wid = weekId(weekStart);
+      const weekStartTime = weekStart.getTime();
+      const isPast = weekStartTime < CURRENT_WEEK_START.getTime();
+      const isCurrent = weekStartTime === CURRENT_WEEK_START.getTime();
+      const isFuture = weekStartTime > CURRENT_WEEK_START.getTime();
 
       const actualWeek = weeks.find((w) => w.id === wid);
       const actualDays = actualWeek ? { ...actualWeek.days } : emptyDays();
@@ -97,8 +75,8 @@ export default function AttendanceTracker({ uid, onSignOut }) {
       } else if (isCurrent) {
         displayDays = { ...actualDays };
         DAYS.forEach((day, idx) => {
-          const dayDate = new Date(monday);
-          dayDate.setDate(monday.getDate() + idx);
+          const dayDate = new Date(weekStart);
+          dayDate.setDate(weekStart.getDate() + idx);
           dayDate.setHours(0, 0, 0, 0);
           if (dayDate > TODAY) {
             displayDays[day] = plannerDays[wid]?.[day] ?? false;
@@ -108,7 +86,7 @@ export default function AttendanceTracker({ uid, onSignOut }) {
         displayDays = { ...emptyDays(), ...(plannerDays[wid] || {}) };
       }
 
-      return { id: wid, monday, isPast, isCurrent, isFuture, days: displayDays };
+      return { id: wid, weekStart, isPast, isCurrent, isFuture, days: displayDays };
     });
   }, [weeks, plannerOffset, plannerDays]);
 
@@ -195,7 +173,7 @@ export default function AttendanceTracker({ uid, onSignOut }) {
                   Your BELT averages the <strong>best 8</strong> of the 12 weeks below. The{" "}
                   {EXPIRING_WEEKS} oldest are still counted, but they leave the window as new
                   weeks are added, starting with{" "}
-                  <strong>{formatWeekLabel(weeks[0].monday)}</strong> next Monday. An{" "}
+                  <strong>{formatWeekLabel(weeks[0].weekStart)}</strong> next Sunday. An{" "}
                   <strong>amber edge</strong> marks the ones that will actually cost you when
                   they go — a departure is free when another week matches it, so an unmarked
                   week can leave without moving your average. Hover a row for its exact cost.
@@ -217,7 +195,7 @@ export default function AttendanceTracker({ uid, onSignOut }) {
               </div>
               {weeks.map((w, i) => {
                 const count = weekCounts[i];
-                const isCurrentWeek = w.monday.getTime() === CURRENT_MONDAY.getTime();
+                const isCurrentWeek = w.weekStart.getTime() === CURRENT_WEEK_START.getTime();
                 const isLeaving = i < EXPIRING_WEEKS;
                 const cost = isLeaving && expiring ? expiring.perWeek[i] : 0;
                 const inWeeks = `${i + 1} week${i === 0 ? "" : "s"}`;
@@ -234,11 +212,11 @@ export default function AttendanceTracker({ uid, onSignOut }) {
                     }
                   >
                     <div style={styles.weekLabel}>
-                      {formatWeekLabel(w.monday)}
+                      {formatWeekLabel(w.weekStart)}
                       {isCurrentWeek && <span style={styles.badge("blue")}>now</span>}
                     </div>
                     {DAYS.map((day) => {
-                      const dayDate = new Date(w.monday);
+                      const dayDate = new Date(w.weekStart);
                       dayDate.setDate(dayDate.getDate() + DAYS.indexOf(day));
                       dayDate.setHours(0, 0, 0, 0);
                       const isFuture = dayDate > TODAY;
@@ -339,8 +317,8 @@ export default function AttendanceTracker({ uid, onSignOut }) {
                 style={styles.plannerSelect}
               >
                 {Array.from({ length: 12 }, (_, offset) => {
-                  const endMonday = addWeeks(CURRENT_MONDAY, offset);
-                  const dateLabel = formatWeekLabel(endMonday);
+                  const endWeekStart = addWeeks(CURRENT_WEEK_START, offset);
+                  const dateLabel = formatWeekLabel(endWeekStart);
                   const futureLabel = offset === 0 ? "no future weeks"
                     : offset === 1 ? "+1 future week"
                     : `+${offset} future weeks`;
@@ -369,14 +347,14 @@ export default function AttendanceTracker({ uid, onSignOut }) {
               return (
                 <div key={w.id} style={styles.weekRow(w.isCurrent, false)}>
                   <div style={styles.weekLabel}>
-                    {formatWeekLabel(w.monday)}
+                    {formatWeekLabel(w.weekStart)}
                     {w.isCurrent && <span style={styles.badge("blue")}>now</span>}
                     {w.isPast && <span style={styles.badge("gray")}>actual</span>}
                     {w.isFuture && <span style={styles.badge("green")}>plan</span>}
                   </div>
                   {DAYS.map((day, idx) => {
-                    const dayDate = new Date(w.monday);
-                    dayDate.setDate(w.monday.getDate() + idx);
+                    const dayDate = new Date(w.weekStart);
+                    dayDate.setDate(w.weekStart.getDate() + idx);
                     dayDate.setHours(0, 0, 0, 0);
                     const isFutureDay = dayDate > TODAY;
                     const checked = w.days[day];

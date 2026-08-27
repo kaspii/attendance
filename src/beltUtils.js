@@ -1,4 +1,6 @@
-export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Ordered as the week runs, Sunday first — the grid columns and every
+// day-offset calculation read positions straight out of this.
+export const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /** How many of the oldest weeks are treated as "on their way out" of the window. */
 export const EXPIRING_WEEKS = 4;

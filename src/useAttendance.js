@@ -2,34 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore'
 import { db } from './firebase'
 import { emptyDays } from './beltUtils'
-
-function getMonday(date) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  d.setDate(diff)
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function addWeeks(date, n) {
-  const d = new Date(date)
-  d.setDate(d.getDate() + n * 7)
-  return d
-}
-
-function weekId(monday) {
-  return monday.toISOString().slice(0, 10) // e.g. "2026-02-23"
-}
+import { getWeekStart, addWeeks, weekId } from './weeks'
 
 function buildWeekWindow() {
-  const currentMonday = getMonday(new Date())
+  const currentWeekStart = getWeekStart(new Date())
   const weeks = []
   for (let i = 11; i >= 0; i--) {
-    const monday = addWeeks(currentMonday, -i)
+    const weekStart = addWeeks(currentWeekStart, -i)
     weeks.push({
-      id: weekId(monday),
-      monday,
+      id: weekId(weekStart),
+      weekStart,
       days: emptyDays(),
     })
   }
