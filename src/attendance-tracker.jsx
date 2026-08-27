@@ -193,11 +193,12 @@ export default function AttendanceTracker({ uid, onSignOut }) {
               {showExpiringInfo && (
                 <div style={styles.alertDetail}>
                   Your BELT averages the <strong>best 8</strong> of the 12 weeks below. The{" "}
-                  {EXPIRING_WEEKS} oldest — marked with an amber edge — are still counted,
-                  but they leave the window as new weeks are added, starting with{" "}
-                  <strong>{formatWeekLabel(weeks[0].monday)}</strong> next Monday. This
-                  notice appears only when those weeks are genuinely holding your average
-                  up: if the weeks replacing them match, nothing is lost and you won't see it.
+                  {EXPIRING_WEEKS} oldest are still counted, but they leave the window as new
+                  weeks are added, starting with{" "}
+                  <strong>{formatWeekLabel(weeks[0].monday)}</strong> next Monday. An{" "}
+                  <strong>amber edge</strong> marks the ones that will actually cost you when
+                  they go — a departure is free when another week matches it, so an unmarked
+                  week can leave without moving your average. Hover a row for its exact cost.
                 </div>
               )}
             </div>
@@ -217,15 +218,19 @@ export default function AttendanceTracker({ uid, onSignOut }) {
               {weeks.map((w, i) => {
                 const count = weekCounts[i];
                 const isCurrentWeek = w.monday.getTime() === CURRENT_MONDAY.getTime();
-                const isExpiring = i < EXPIRING_WEEKS;
+                const isLeaving = i < EXPIRING_WEEKS;
+                const cost = isLeaving && expiring ? expiring.perWeek[i] : 0;
+                const inWeeks = `${i + 1} week${i === 0 ? "" : "s"}`;
                 return (
                   <div
                     key={w.id}
-                    style={styles.weekRow(isCurrentWeek, isExpiring)}
+                    style={styles.weekRow(isCurrentWeek, cost > 0)}
                     title={
-                      isExpiring
-                        ? `Still counted. Leaves the 12-week window in ${i + 1} week${i === 0 ? "" : "s"}.`
-                        : undefined
+                      !isLeaving
+                        ? undefined
+                        : cost > 0
+                          ? `Leaves the window in ${inWeeks} and takes ${cost.toFixed(2)} off your BELT.`
+                          : `Leaves the window in ${inWeeks}, but costs nothing — another week matches it.`
                     }
                   >
                     <div style={styles.weekLabel}>

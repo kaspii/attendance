@@ -166,6 +166,35 @@ describe("computeExpiringDrop", () => {
     expect(computeExpiringDrop(weeks).drop).toBeCloseTo(1.125);
   });
 
+  it("attributes a backfilled loss to the departure that lands it", () => {
+    // Nine 3s again. The first week out is absorbed by a spare 3, so it costs
+    // nothing; the backfills are exhausted after that and each later departure
+    // takes 0.375. Marking rows by isolated impact would flag none of them.
+    const weeks = makeWeeks([3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0]);
+    const { perWeek } = computeExpiringDrop(weeks);
+    expect(perWeek).toEqual([0, 0.375, 0.375, 0.375]);
+  });
+
+  it("keeps the per-week costs summing to the total drop", () => {
+    // The invariant the row markers rely on: the alert can never report a fall
+    // that no marked row accounts for, across any shape of window.
+    const shapes = [
+      [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+      [5, 5, 5, 5, 2, 2, 2, 2, 2, 2, 2, 2],
+      [3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0],
+      [0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4],
+      [1, 7, 2, 6, 3, 5, 4, 0, 7, 1, 2, 3],
+      [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+    ];
+    for (const shape of shapes) {
+      const { drop, perWeek } = computeExpiringDrop(makeWeeks(shape));
+      const summed = perWeek.reduce((a, b) => a + b, 0);
+      expect(summed).toBeCloseTo(drop, 10);
+      expect(perWeek.every((c) => c >= 0)).toBe(true);
+      if (drop > 0) expect(perWeek.some((c) => c > 0)).toBe(true);
+    }
+  });
+
   it("measures the drop when strong old weeks age out", () => {
     // best 8 of all 12 = [5,5,5,5,2,2,2,2] = 28/8 = 3.5
     // survivors alone   = [2,2,2,2,2,2,2,2] = 16/8 = 2.0

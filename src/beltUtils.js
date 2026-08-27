@@ -34,10 +34,22 @@ export function computeBELT(weeks) {
  * also catches the case where no single week matters on its own but several
  * leaving together do.
  *
+ * `perWeek` breaks the total down over the oldest weeks, in the order they
+ * actually leave. Each entry is what the BELT loses at the moment that week
+ * ages out, given the ones before it are already gone. Attributing the cost
+ * to a step of the real timeline keeps the parts honest: they telescope to
+ * exactly `drop`, so a week reads as free only when the loss genuinely lands
+ * on a later departure rather than vanishing.
+ *
+ * Measuring each week in isolation instead would break that. Against nine
+ * weeks at three days, removing any single one is absorbed by a backfill and
+ * scores zero, yet the four together cost 1.125 — the total would have no
+ * parts to account for it.
+ *
  * Returns null when the window is too short to have a BELT at either end.
  *
  * @param {Array<{ days: Record<string, boolean> }>} weeks - oldest first
- * @returns {{ current: number, after: number, drop: number } | null}
+ * @returns {{ current: number, after: number, drop: number, perWeek: number[] } | null}
  */
 export function computeExpiringDrop(weeks) {
   const current = computeBELT(weeks);
@@ -46,7 +58,14 @@ export function computeExpiringDrop(weeks) {
   // best 8, so leaving them out gives the same average.
   const after = computeBELT(weeks.slice(EXPIRING_WEEKS));
   if (current === null || after === null) return null;
-  return { current, after, drop: current - after };
+
+  // Every intermediate window sits between the full one and the survivors, so
+  // each is long enough to have a BELT once the two ends above are non-null.
+  const perWeek = Array.from({ length: EXPIRING_WEEKS }, (_, i) =>
+    computeBELT(weeks.slice(i)) - computeBELT(weeks.slice(i + 1))
+  );
+
+  return { current, after, drop: current - after, perWeek };
 }
 
 /**
