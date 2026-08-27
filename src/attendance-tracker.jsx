@@ -368,7 +368,7 @@ export default function AttendanceTracker({ uid, onSignOut }) {
               const count = Object.values(w.days).filter(Boolean).length;
               return (
                 <div key={w.id} style={styles.weekRow(w.isCurrent, false)}>
-                  <div style={styles.weekLabel(false)}>
+                  <div style={styles.weekLabel}>
                     {formatWeekLabel(w.monday)}
                     {w.isCurrent && <span style={styles.badge("blue")}>now</span>}
                     {w.isPast && <span style={styles.badge("gray")}>actual</span>}
