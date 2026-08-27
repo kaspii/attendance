@@ -1,7 +1,14 @@
 import { useState, useMemo } from "react";
 import useAttendance from "./useAttendance";
 import usePlanner from "./usePlanner";
-import { computeBELT, computeMinDaysNeeded, DAYS, emptyDays } from "./beltUtils";
+import {
+  computeBELT,
+  computeMinDaysNeeded,
+  computeExpiringDrop,
+  DAYS,
+  EXPIRING_WEEKS,
+  emptyDays,
+} from "./beltUtils";
 
 const F = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 const LIME = "#D4F535";
@@ -67,7 +74,7 @@ export default function AttendanceTracker({ uid, onSignOut }) {
     return computeBELT(simmed);
   }, [weeks, simDays, simWeeks]);
 
-  const expiringAlert = weeks.slice(0, 4).filter((w, i) => weekCounts[i] >= 3);
+  const expiring = useMemo(() => computeExpiringDrop(weeks), [weeks]);
   const minDaysNeeded = useMemo(() => computeMinDaysNeeded(weeks), [weeks]);
   const beltStatus = belt === null ? null : belt >= 3 ? "good" : "at-risk";
 
@@ -167,9 +174,13 @@ export default function AttendanceTracker({ uid, onSignOut }) {
               <strong>{minDaysNeeded} day{minDaysNeeded !== 1 ? "s" : ""}</strong> this week to improve your BELT.
             </div>
           )}
-          {beltStatus === "good" && expiringAlert.length > 0 && (
+          {beltStatus === "good" && expiring !== null && expiring.drop > 0 && (
             <div style={styles.alertBar("amber")}>
-              <strong>Heads up.</strong> {expiringAlert.length} high-attendance week{expiringAlert.length > 1 ? "s" : ""} roll out of your window soon.
+              <strong>Heads up.</strong> Your {EXPIRING_WEEKS} oldest weeks roll out of the
+              window over the next month. Without new days, your BELT falls from{" "}
+              <strong>{expiring.current.toFixed(2)}</strong> to{" "}
+              <strong>{expiring.after.toFixed(2)}</strong>
+              {expiring.after < 3 && " — below the threshold"}.
               <button
                 onClick={() => setShowExpiringInfo((v) => !v)}
                 className="info-btn"
@@ -181,11 +192,12 @@ export default function AttendanceTracker({ uid, onSignOut }) {
               </button>
               {showExpiringInfo && (
                 <div style={styles.alertDetail}>
-                  Your BELT averages the <strong>best 8</strong> of the 12 weeks below. The
-                  4 oldest — marked with an amber edge — are still counted, but they leave
-                  the window as new weeks are added, starting with{" "}
-                  <strong>{formatWeekLabel(weeks[0].monday)}</strong> next Monday. Losing a
-                  high-attendance week pulls your average down unless you replace those days.
+                  Your BELT averages the <strong>best 8</strong> of the 12 weeks below. The{" "}
+                  {EXPIRING_WEEKS} oldest — marked with an amber edge — are still counted,
+                  but they leave the window as new weeks are added, starting with{" "}
+                  <strong>{formatWeekLabel(weeks[0].monday)}</strong> next Monday. This
+                  notice appears only when those weeks are genuinely holding your average
+                  up: if the weeks replacing them match, nothing is lost and you won't see it.
                 </div>
               )}
             </div>
@@ -205,7 +217,7 @@ export default function AttendanceTracker({ uid, onSignOut }) {
               {weeks.map((w, i) => {
                 const count = weekCounts[i];
                 const isCurrentWeek = w.monday.getTime() === CURRENT_MONDAY.getTime();
-                const isExpiring = i < 4;
+                const isExpiring = i < EXPIRING_WEEKS;
                 return (
                   <div
                     key={w.id}

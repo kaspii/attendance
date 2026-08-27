@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { computeBELT, computeMinDaysNeeded, DAYS, emptyDays } from "../src/beltUtils";
+import {
+  computeBELT,
+  computeMinDaysNeeded,
+  computeExpiringDrop,
+  DAYS,
+  emptyDays,
+} from "../src/beltUtils";
 
 // Helper: build a week object with a given number of days attended
 function makeWeek(daysCount) {
@@ -126,5 +132,54 @@ describe("computeMinDaysNeeded", () => {
     // 11 weeks at 1 day → with 7 this week: best 8 = [7,1,1,1,1,1,1,1] = 13/8 = 1.625 — fails
     const weeks = makeWeeks([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]);
     expect(computeMinDaysNeeded(weeks)).toBe("7+");
+  });
+});
+
+describe("computeExpiringDrop", () => {
+  it("returns null when the window is too short to have a BELT", () => {
+    expect(computeExpiringDrop(makeWeeks([3, 3, 3, 3, 3]))).toBeNull();
+  });
+
+  it("reports no drop when the expiring weeks are not holding the average up", () => {
+    // The 4 oldest are the worst weeks; the best 8 survive untouched.
+    const weeks = makeWeeks([0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4]);
+    expect(computeExpiringDrop(weeks).drop).toBe(0);
+  });
+
+  it("reports no drop when replacements tie the expiring weeks", () => {
+    // Every week is a 3, so the 4 leaving are replaced by equals.
+    // A naive 'is it in the best 8' check would flag all four here.
+    const weeks = makeWeeks([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
+    const { current, after, drop } = computeExpiringDrop(weeks);
+    expect(current).toBe(3);
+    expect(after).toBe(3);
+    expect(drop).toBe(0);
+  });
+
+  it("catches a loss that no single week is responsible for", () => {
+    // Nine 3s: removing any one week alone changes nothing, because another 3
+    // backfills the best 8. Losing all four together exhausts the backfills.
+    const weeks = makeWeeks([3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0]);
+    const withoutOne = computeBELT(weeks.filter((_, i) => i !== 0));
+    expect(withoutOne).toBe(3); // no individual loss
+    // Survivors are five 3s and three 0s = 15/8 = 1.875, so 3.0 → 1.875.
+    expect(computeExpiringDrop(weeks).drop).toBeCloseTo(1.125);
+  });
+
+  it("measures the drop when strong old weeks age out", () => {
+    // best 8 of all 12 = [5,5,5,5,2,2,2,2] = 28/8 = 3.5
+    // survivors alone   = [2,2,2,2,2,2,2,2] = 16/8 = 2.0
+    const weeks = makeWeeks([5, 5, 5, 5, 2, 2, 2, 2, 2, 2, 2, 2]);
+    const { current, after, drop } = computeExpiringDrop(weeks);
+    expect(current).toBe(3.5);
+    expect(after).toBe(2);
+    expect(drop).toBeCloseTo(1.5);
+  });
+
+  it("never reports a negative drop", () => {
+    // Recent weeks stronger than the expiring ones: best-8-of-12 already
+    // ignores the old weeks, so the average cannot improve by losing them.
+    const weeks = makeWeeks([1, 1, 1, 1, 5, 5, 5, 5, 5, 5, 5, 5]);
+    expect(computeExpiringDrop(weeks).drop).toBe(0);
   });
 });

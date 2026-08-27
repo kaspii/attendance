@@ -1,5 +1,8 @@
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/** How many of the oldest weeks are treated as "on their way out" of the window. */
+export const EXPIRING_WEEKS = 4;
+
 /** A fresh week with every day unattended. */
 export function emptyDays() {
   return Object.fromEntries(DAYS.map((d) => [d, false]));
@@ -18,6 +21,32 @@ export function computeBELT(weeks) {
   const best8 = sorted.slice(0, 8);
   if (best8.length < 8) return null;
   return best8.reduce((a, b) => a + b, 0) / 8;
+}
+
+/**
+ * Measures what the oldest weeks are actually worth by comparing the BELT now
+ * against the BELT once they have aged out and nothing new has been logged.
+ *
+ * This asks the question directly rather than guessing from day counts. A week
+ * only shows up as a loss if removing it genuinely moves the average, so weeks
+ * that tie with their replacement — or that were never in the best 8 — cost
+ * nothing and stay silent. Because it compares the whole window at once, it
+ * also catches the case where no single week matters on its own but several
+ * leaving together do.
+ *
+ * Returns null when the window is too short to have a BELT at either end.
+ *
+ * @param {Array<{ days: Record<string, boolean> }>} weeks - oldest first
+ * @returns {{ current: number, after: number, drop: number } | null}
+ */
+export function computeExpiringDrop(weeks) {
+  const current = computeBELT(weeks);
+  // The surviving weeks alone: any new weeks arriving to replace the expired
+  // ones start empty, and empty weeks can never displace a survivor from the
+  // best 8, so leaving them out gives the same average.
+  const after = computeBELT(weeks.slice(EXPIRING_WEEKS));
+  if (current === null || after === null) return null;
+  return { current, after, drop: current - after };
 }
 
 /**
