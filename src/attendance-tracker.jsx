@@ -212,8 +212,16 @@ export default function AttendanceTracker({ uid, onSignOut }) {
                     }
                   >
                     <div style={styles.weekLabel}>
-                      {formatWeekLabel(w.weekStart)}
-                      {isCurrentWeek && <span style={styles.badge("blue")}>now</span>}
+                      <span
+                        style={styles.weekDate(isCurrentWeek)}
+                        aria-label={
+                          isCurrentWeek
+                            ? `${formatWeekLabel(w.weekStart)}, current week`
+                            : undefined
+                        }
+                      >
+                        {formatWeekLabel(w.weekStart)}
+                      </span>
                     </div>
                     {DAYS.map((day) => {
                       const dayDate = new Date(w.weekStart);
@@ -347,10 +355,18 @@ export default function AttendanceTracker({ uid, onSignOut }) {
               return (
                 <div key={w.id} style={styles.weekRow(w.isCurrent, false)}>
                   <div style={styles.weekLabel}>
-                    {formatWeekLabel(w.weekStart)}
-                    {w.isCurrent && <span style={styles.badge("blue")}>now</span>}
-                    {w.isPast && <span style={styles.badge("gray")}>actual</span>}
-                    {w.isFuture && <span style={styles.badge("green")}>plan</span>}
+                    <span
+                      style={styles.weekDate(w.isCurrent)}
+                      aria-label={
+                        w.isCurrent ? `${formatWeekLabel(w.weekStart)}, current week` : undefined
+                      }
+                    >
+                      {formatWeekLabel(w.weekStart)}
+                    </span>
+                    {/* Past/future is also carried by the day-cell styling, so
+                        these drop away on narrow screens to free up the column. */}
+                    {w.isPast && <span className="week-badge" style={styles.badge("gray")}>actual</span>}
+                    {w.isFuture && <span className="week-badge" style={styles.badge("green")}>plan</span>}
                   </div>
                   {DAYS.map((day, idx) => {
                     const dayDate = new Date(w.weekStart);
@@ -399,7 +415,7 @@ const styles = {
     background: "#ffffff",
     color: "#111111",
     fontFamily: F,
-    padding: "32px 24px",
+    padding: "var(--page-pad-y) var(--page-pad-x)",
     maxWidth: 880,
     margin: "0 auto",
   },
@@ -417,6 +433,7 @@ const styles = {
   },
   header: {
     display: "flex",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 24,
@@ -553,7 +570,7 @@ const styles = {
     background: "#ffffff",
     border: "1px solid #e5e7eb",
     borderRadius: 12,
-    padding: "22px 24px",
+    padding: "var(--card-pad-y) var(--card-pad-x)",
     marginBottom: 16,
   },
   cardTitle: {
@@ -574,11 +591,15 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 1,
+    // Safety net for viewports too narrow even for the reduced sizes: the
+    // grid scrolls within the card rather than spilling out past its border.
+    overflowX: "auto",
   },
   weekRowHeader: {
     display: "grid",
-    gridTemplateColumns: "90px repeat(7, 42px) 42px",
-    gap: 4,
+    gridTemplateColumns: "var(--grid-label) var(--grid-days) var(--grid-count)",
+    gap: "var(--grid-gap)",
+    minWidth: "min-content",
     paddingBottom: 8,
     borderBottom: "1px solid #e5e7eb",
     marginBottom: 4,
@@ -616,8 +637,9 @@ const styles = {
   },
   weekRow: (isCurrent, isExpiring) => ({
     display: "grid",
-    gridTemplateColumns: "90px repeat(7, 42px) 42px",
-    gap: 4,
+    gridTemplateColumns: "var(--grid-label) var(--grid-days) var(--grid-count)",
+    gap: "var(--grid-gap)",
+    minWidth: "min-content",
     alignItems: "center",
     background: isCurrent ? "#fafee8" : "transparent",
     borderRadius: 6,
@@ -637,7 +659,25 @@ const styles = {
     alignItems: "center",
     gap: 6,
     paddingLeft: 4,
+    minWidth: 0,
   },
+  // The current week is boxed rather than badged: a separate "now" chip cost
+  // more of the label column than the date itself, and the row is already
+  // tinted, so this only has to confirm which row that tint belongs to.
+  weekDate: (isCurrent) => ({
+    whiteSpace: "nowrap",
+    ...(isCurrent
+      ? {
+          background: "#eff6ff",
+          border: "1px solid #bfdbfe",
+          color: "#1d4ed8",
+          fontWeight: 600,
+          borderRadius: 5,
+          padding: "1px 5px",
+          margin: "-1px -1px -1px -3px",
+        }
+      : {}),
+  }),
   badge: (color) => ({
     fontSize: 9,
     fontWeight: 600,
@@ -649,8 +689,8 @@ const styles = {
     color: color === "blue" ? "#3b82f6" : color === "green" ? "#16a34a" : "#9ca3af",
   }),
   dayBtn: (checked, isFuture) => ({
-    width: 34,
-    height: 28,
+    width: "100%",
+    height: "var(--day-btn-h)",
     margin: "0 auto",
     display: "flex",
     alignItems: "center",
@@ -664,8 +704,8 @@ const styles = {
     color: checked ? "#ffffff" : isFuture ? "#d1d5db" : "#9ca3af",
   }),
   plannerDayBtn: (checked, isReadOnly, isFutureDay) => ({
-    width: 34,
-    height: 28,
+    width: "100%",
+    height: "var(--day-btn-h)",
     margin: "0 auto",
     display: "flex",
     alignItems: "center",
@@ -693,7 +733,7 @@ const styles = {
   }),
   statsRow: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
+    gridTemplateColumns: "var(--stats-cols)",
     gap: 12,
     marginBottom: 16,
   },
@@ -727,7 +767,8 @@ const styles = {
   },
   simControls: {
     display: "flex",
-    gap: 32,
+    flexDirection: "var(--sim-dir)",
+    gap: "var(--sim-gap)",
     marginBottom: 20,
   },
   simSlider: {

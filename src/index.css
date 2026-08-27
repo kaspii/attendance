@@ -1,3 +1,51 @@
+/* Layout scale. The components style themselves inline, so the responsive
+   sizes live here as variables they read: one media query re-scales the
+   weekly grid rather than every rule being duplicated at each breakpoint.
+
+   The 7-day grid needs 458px at desktop sizes, which is far past a phone
+   viewport once page and card padding are taken off. */
+:root {
+  --grid-label: 90px;
+  /* Fixed tracks on wide screens keep the grid compact and left-aligned. */
+  --grid-days: repeat(7, 42px);
+  --grid-count: 42px;
+  --grid-gap: 4px;
+  --day-btn-h: 28px;
+  --page-pad-x: 24px;
+  --page-pad-y: 32px;
+  --card-pad-x: 24px;
+  --card-pad-y: 22px;
+  --stats-cols: 1fr 1fr 1fr;
+  --sim-dir: row;
+  --sim-gap: 32px;
+}
+
+@media (max-width: 560px) {
+  :root {
+    --grid-label: 58px;
+    /* Day columns share out whatever is left instead of being pinned to one
+       hand-picked width, so the row fits any phone rather than only the size
+       it was tuned against. Below the 26px floor the grid scrolls in its card. */
+    --grid-days: repeat(7, minmax(26px, 1fr));
+    --grid-count: 32px; /* fits the "Days" heading, which 24px did not */
+    --grid-gap: 2px;
+    --day-btn-h: 26px;
+    --page-pad-x: 10px;
+    --page-pad-y: 20px;
+    --card-pad-x: 12px;
+    --card-pad-y: 16px;
+    --stats-cols: 1fr;
+    --sim-dir: column;
+    --sim-gap: 18px;
+  }
+
+  /* The week label has room for the date alone at this width. Current-week
+     rows are marked with a box around the date instead. */
+  .week-badge {
+    display: none;
+  }
+}
+
 /* Hover and transition effects — complements inline styles in components */
 
 .day-btn {
