@@ -1,11 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { computeBELT, computeMinDaysNeeded } from "../src/beltUtils";
+import { computeBELT, computeMinDaysNeeded, DAYS, emptyDays } from "../src/beltUtils";
 
 // Helper: build a week object with a given number of days attended
 function makeWeek(daysCount) {
-  const days = { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false };
-  const keys = Object.keys(days);
-  for (let i = 0; i < daysCount; i++) days[keys[i]] = true;
+  const days = emptyDays();
+  for (let i = 0; i < daysCount; i++) days[DAYS[i]] = true;
   return { days };
 }
 
@@ -50,6 +49,17 @@ describe("computeBELT", () => {
 
   it("returns 5 when all weeks have 5 days", () => {
     expect(computeBELT(makeWeeks([5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]))).toBe(5);
+  });
+
+  it("returns 7 when all weeks are full 7-day weeks", () => {
+    expect(computeBELT(makeWeeks([7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7]))).toBe(7);
+  });
+
+  it("counts weekend days toward the weekly total", () => {
+    // A single week with only Sat and Sun badged still counts as 2 days
+    const weekend = { days: { ...emptyDays(), Sat: true, Sun: true } };
+    const weeks = [...makeWeeks([0, 0, 0, 0, 0, 0, 0]), weekend];
+    expect(computeBELT(weeks)).toBe(0.25); // 2/8
   });
 
   it("returns exactly 3.0 at the compliance boundary", () => {
@@ -97,16 +107,24 @@ describe("computeMinDaysNeeded", () => {
     expect(computeMinDaysNeeded(weeks)).toBe(1);
   });
 
-  it("returns '5+' when even 5 days cannot reach BELT >= 3.0", () => {
-    // All weeks at 0 → even with 5 days in current week:
-    // best 8 = [5,0,0,0,0,0,0,0] = 5/8 = 0.625 — not enough
-    const weeks = makeWeeks([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-    expect(computeMinDaysNeeded(weeks)).toBe("5+");
+  it("can require a weekend day to reach the threshold", () => {
+    // Top 7 of the prior weeks sum to 18, and the 8th slot is 0.
+    // current=5 → best 8 = [5,3,3,3,3,2,2,2] = 23 → 2.875 ✗
+    // current=6 → best 8 = [6,3,3,3,3,2,2,2] = 24 → 3.0 ✓
+    const weeks = makeWeeks([3, 3, 3, 3, 2, 2, 2, 0, 0, 0, 0, 0]);
+    expect(computeMinDaysNeeded(weeks)).toBe(6);
   });
 
-  it("returns '5+' when history is too sparse to recover", () => {
-    // 11 weeks at 1 day → with 5 this week: best 8 = [5,1,1,1,1,1,1,1] = 12/8 = 1.5 — fails
+  it("returns '7+' when even 7 days cannot reach BELT >= 3.0", () => {
+    // All weeks at 0 → even with 7 days in current week:
+    // best 8 = [7,0,0,0,0,0,0,0] = 7/8 = 0.875 — not enough
+    const weeks = makeWeeks([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(computeMinDaysNeeded(weeks)).toBe("7+");
+  });
+
+  it("returns '7+' when history is too sparse to recover", () => {
+    // 11 weeks at 1 day → with 7 this week: best 8 = [7,1,1,1,1,1,1,1] = 13/8 = 1.625 — fails
     const weeks = makeWeeks([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]);
-    expect(computeMinDaysNeeded(weeks)).toBe("5+");
+    expect(computeMinDaysNeeded(weeks)).toBe("7+");
   });
 });

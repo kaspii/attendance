@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
 import useAttendance from "./useAttendance";
 import usePlanner from "./usePlanner";
-import { computeBELT, computeMinDaysNeeded } from "./beltUtils";
+import { computeBELT, computeMinDaysNeeded, DAYS, emptyDays } from "./beltUtils";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const F = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 const LIME = "#D4F535";
 const BLACK = "#111111";
@@ -25,10 +24,6 @@ function addWeeks(date, n) {
 
 function weekId(monday) {
   return monday.toISOString().slice(0, 10);
-}
-
-function emptyDays() {
-  return { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false };
 }
 
 function formatWeekLabel(monday) {
@@ -256,10 +251,10 @@ export default function AttendanceTracker({ uid, onSignOut }) {
             <div style={styles.simControls}>
               <div style={styles.simSlider}>
                 <label style={styles.simLabel}>Days/week: <strong>{simDays}</strong></label>
-                <input type="range" min={0} max={5} value={simDays}
+                <input type="range" min={0} max={7} value={simDays}
                   onChange={(e) => setSimDays(+e.target.value)} style={styles.slider} />
                 <div style={styles.sliderTicks}>
-                  {[0,1,2,3,4,5].map((n) => <span key={n}>{n}</span>)}
+                  {[0,1,2,3,4,5,6,7].map((n) => <span key={n}>{n}</span>)}
                 </div>
               </div>
               <div style={styles.simSlider}>
@@ -524,7 +519,7 @@ const styles = {
   },
   weekRowHeader: {
     display: "grid",
-    gridTemplateColumns: "90px repeat(5, 42px) 42px",
+    gridTemplateColumns: "90px repeat(7, 42px) 42px",
     gap: 4,
     paddingBottom: 8,
     borderBottom: "1px solid #e5e7eb",
@@ -563,7 +558,7 @@ const styles = {
   },
   weekRow: (isCurrent, isExpiring) => ({
     display: "grid",
-    gridTemplateColumns: "90px repeat(5, 42px) 42px",
+    gridTemplateColumns: "90px repeat(7, 42px) 42px",
     gap: 4,
     alignItems: "center",
     background: isCurrent ? "#fafee8" : "transparent",

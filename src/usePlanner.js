@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from './firebase'
-
-function emptyDays() {
-  return { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false }
-}
+import { emptyDays } from './beltUtils'
 
 export default function usePlanner(uid) {
   const [plannerOffset, setPlannerOffsetState] = useState(4)

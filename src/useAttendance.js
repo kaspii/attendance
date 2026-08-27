@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore'
 import { db } from './firebase'
-
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+import { emptyDays } from './beltUtils'
 
 function getMonday(date) {
   const d = new Date(date)
@@ -21,10 +20,6 @@ function addWeeks(date, n) {
 
 function weekId(monday) {
   return monday.toISOString().slice(0, 10) // e.g. "2026-02-23"
-}
-
-function emptyDays() {
-  return { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false }
 }
 
 function buildWeekWindow() {
